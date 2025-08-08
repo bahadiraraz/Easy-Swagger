@@ -12,6 +12,8 @@ A lightweight tool for exploring OpenAPI/Swagger specifications and quickly gett
 
 ## Getting Started
 
+### Using Bun
+
 ```bash
 # Clone the repository
 git clone https://github.com/bahadiraraz/easy-swagger.git
@@ -22,6 +24,29 @@ bun install
 
 # Start the development server
 bun dev
+```
+
+### Using Docker
+
+```bash
+# Clone the repository
+git clone https://github.com/bahadiraraz/easy-swagger.git
+cd easy-swagger
+
+# Build and start the Docker container
+docker-compose up -d
+
+# The application will be available at http://localhost:3000
+```
+
+You can also build and run the Docker image directly:
+
+```bash
+# Build the Docker image
+docker build -t easy-swagger .
+
+# Run the container
+docker run -p 3000:3000 easy-swagger
 ```
 
 ## How to Use
