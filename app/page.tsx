@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { SwaggerUrlForm } from "@/components/swagger-url-form";
 import { EndpointList } from "@/components/endpoint-list";
-import { fetchOpenAPISpec, getAllEndpointsInfo, extractEndpointInfo, type EndpointInfo, type OpenAPISpec } from "@/lib/openapi";
+import { AuthPageFrame } from "@/components/auth-page-frame";
+import { fetchOpenAPISpec, getAllEndpointsInfo, extractEndpointInfo, type EndpointInfo, type OpenAPISpec, AuthPageError } from "@/lib/openapi";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Home() {
@@ -11,11 +12,13 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [endpoints, setEndpoints] = useState<Record<string, EndpointInfo>>({});
   const [selectedEndpoint, setSelectedEndpoint] = useState<string | null>(null);
+  const [authPageData, setAuthPageData] = useState<{ htmlContent: string; url: string } | null>(null);
 
   const handleFetchOpenAPI = async (url: string) => {
     setIsLoading(true);
     setError(null);
     setSelectedEndpoint(null);
+    setAuthPageData(null);
 
     try {
       const openApiSpec = await fetchOpenAPISpec(url);
@@ -27,7 +30,17 @@ export default function Home() {
       }
     } catch (err) {
       console.error("Error fetching OpenAPI spec:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch OpenAPI specification");
+
+      // Check if this is an authentication page error
+      if (err instanceof AuthPageError) {
+        setAuthPageData({
+          htmlContent: err.htmlContent,
+          url: url
+        });
+      } else {
+        setError(err instanceof Error ? err.message : "Failed to fetch OpenAPI specification");
+      }
+
       setEndpoints({});
     } finally {
       setIsLoading(false);
@@ -108,14 +121,24 @@ export default function Home() {
       )}
 
       <main className="flex-1 w-full">
-        {Object.keys(endpoints).length > 0 && (
+        {authPageData && (
+          <div className="max-w-4xl mx-auto">
+            <AuthPageFrame
+              htmlContent={authPageData.htmlContent}
+              url={authPageData.url}
+              onRetry={() => handleFetchOpenAPI(authPageData.url)}
+            />
+          </div>
+        )}
+
+        {!authPageData && Object.keys(endpoints).length > 0 && (
           <EndpointList
             endpoints={endpoints}
             onSelectEndpoint={handleSelectEndpoint}
           />
         )}
 
-        {!isLoading && Object.keys(endpoints).length === 0 && !error && (
+        {!isLoading && !authPageData && Object.keys(endpoints).length === 0 && !error && (
           <div className="text-center p-16 border rounded-lg shadow-sm bg-gray-50 max-w-4xl mx-auto">
             <h2 className="text-2xl font-semibold mb-4">Welcome to Easy Swagger</h2>
             <p className="text-gray-600 text-lg mb-2">

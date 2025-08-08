@@ -9,6 +9,17 @@ export type OpenAPISpec = {
   [key: string]: any;
 };
 
+// Custom error for authentication pages
+export class AuthPageError extends Error {
+  htmlContent: string;
+
+  constructor(htmlContent: string) {
+    super('Authentication required');
+    this.name = 'AuthPageError';
+    this.htmlContent = htmlContent;
+  }
+}
+
 export type PathItem = {
   [method: string]: MethodInfo;
 };
@@ -62,6 +73,11 @@ export async function fetchOpenAPISpec(url: string): Promise<OpenAPISpec> {
     }
 
     const data = await response.json();
+
+    // Check if the response is an authentication page
+    if (data && data.isAuthPage === true && data.htmlContent) {
+      throw new AuthPageError(data.htmlContent);
+    }
 
     // Validate that the response is a valid OpenAPI spec
     if (!data || typeof data !== 'object' || (!data.paths && !data.openapi && !data.swagger)) {
