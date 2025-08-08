@@ -1,102 +1,137 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect } from "react";
+import { SwaggerUrlForm } from "@/components/swagger-url-form";
+import { EndpointList } from "@/components/endpoint-list";
+import { fetchOpenAPISpec, getAllEndpointsInfo, extractEndpointInfo, type EndpointInfo, type OpenAPISpec } from "@/lib/openapi";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [endpoints, setEndpoints] = useState<Record<string, EndpointInfo>>({});
+  const [selectedEndpoint, setSelectedEndpoint] = useState<string | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
+  const handleFetchOpenAPI = async (url: string) => {
+    setIsLoading(true);
+    setError(null);
+    setSelectedEndpoint(null);
+
+    try {
+      const openApiSpec = await fetchOpenAPISpec(url);
+      const allEndpoints = getAllEndpointsInfo(openApiSpec);
+      setEndpoints(allEndpoints);
+
+      if (typeof window !== 'undefined' && window.toast) {
+        window.toast.success("OpenAPI specification loaded successfully!");
+      }
+    } catch (err) {
+      console.error("Error fetching OpenAPI spec:", err);
+      setError(err instanceof Error ? err.message : "Failed to fetch OpenAPI specification");
+      setEndpoints({});
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFileUpload = async (fileContent: OpenAPISpec) => {
+    setIsLoading(true);
+    setError(null);
+    setSelectedEndpoint(null);
+
+    try {
+      // Validate that the uploaded file is a valid OpenAPI spec
+      if (!fileContent || typeof fileContent !== 'object' || (!fileContent.paths && !fileContent.openapi && !fileContent.swagger)) {
+        throw new Error('Invalid OpenAPI specification format');
+      }
+
+      const allEndpoints = getAllEndpointsInfo(fileContent);
+      setEndpoints(allEndpoints);
+
+      if (typeof window !== 'undefined' && window.toast) {
+        window.toast.success("OpenAPI specification loaded successfully!");
+      }
+    } catch (err) {
+      console.error("Error processing uploaded file:", err);
+      setError(err instanceof Error ? err.message : "Failed to process OpenAPI specification");
+      setEndpoints({});
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load saved file from localStorage on component mount
+  useEffect(() => {
+    const savedFile = localStorage.getItem("swagger-file");
+    if (savedFile) {
+      try {
+        const fileContent = JSON.parse(savedFile);
+        handleFileUpload(fileContent);
+      } catch (err) {
+        console.error("Error parsing saved file:", err);
+        // If there's an error parsing the saved file, remove it from localStorage
+        localStorage.removeItem("swagger-file");
+      }
+    }
+  }, []);
+
+  const handleSelectEndpoint = (endpoint: string) => {
+    setSelectedEndpoint(endpoint);
+  };
+
+
+  return (
+    <div className="min-h-screen p-8 flex flex-col gap-8 max-w-7xl mx-auto">
+      <header className="text-center mb-4">
+        <h1 className="text-4xl font-bold mb-3">Easy Swagger</h1>
+        <p className="text-gray-500 mb-2 text-lg">
+          Enter an OpenAPI/Swagger URL or upload a file to explore and copy endpoint details
+        </p>
+        <p className="mt-2 mb-8">
+          <a href="https://github.com/bahadiraraz" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+            Made by bahadiraraz
           </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+        </p>
+        <div className="max-w-4xl mx-auto">
+          <SwaggerUrlForm
+            onFetch={handleFetchOpenAPI}
+            onFileUpload={handleFileUpload}
+            isLoading={isLoading}
+          />
         </div>
+      </header>
+
+      {error && (
+        <Alert variant="destructive" className="mx-auto max-w-4xl">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      <main className="flex-1 w-full">
+        {Object.keys(endpoints).length > 0 && (
+          <EndpointList
+            endpoints={endpoints}
+            onSelectEndpoint={handleSelectEndpoint}
+          />
+        )}
+
+        {!isLoading && Object.keys(endpoints).length === 0 && !error && (
+          <div className="text-center p-16 border rounded-lg shadow-sm bg-gray-50 max-w-4xl mx-auto">
+            <h2 className="text-2xl font-semibold mb-4">Welcome to Easy Swagger</h2>
+            <p className="text-gray-600 text-lg mb-2">
+              Enter an OpenAPI/Swagger URL or upload a JSON file to get started
+            </p>
+            <p className="text-gray-500 text-sm">
+              You can explore API endpoints, view their details, and copy the information as JSON
+            </p>
+          </div>
+        )}
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+
+      <footer className="text-center text-gray-500 text-sm py-4">
+        <p>
+          Easy Swagger - OpenAPI Specification Explorer
+        </p>
       </footer>
     </div>
   );
