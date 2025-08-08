@@ -12,23 +12,24 @@ interface AuthPageFrameProps {
 }
 
 export function AuthPageFrame({ htmlContent, url, onRetry }: AuthPageFrameProps) {
-  // Extract the authentication URL from the HTML content if possible
-  const extractAuthUrl = (): string | null => {
-    // Try to find a Cloudflare Access URL in the HTML
-    const cloudflareUrlMatch = htmlContent.match(/https:\/\/[a-zA-Z0-9.-]+\.cloudflareaccess\.com[^"']+/);
-    if (cloudflareUrlMatch) {
-      return cloudflareUrlMatch[0];
+  // Extract the form action URL from the HTML content
+  const extractFormActionUrl = (): string | null => {
+    // Try to find the form action URL in the HTML
+    const formActionMatch = htmlContent.match(/form\s+class="AuthFormLogin"\s+action='([^']+)'/);
+    if (formActionMatch && formActionMatch[1]) {
+      return formActionMatch[1];
     }
 
     // If no specific URL found, return the original URL
     return url;
   };
 
-  const authUrl = extractAuthUrl();
+  const authUrl = extractFormActionUrl();
 
   const handleOpenAuth = () => {
     // Open the authentication URL in a new tab
-    window.open(authUrl, '_blank', 'noopener,noreferrer');
+    // Use empty string as fallback if authUrl is null
+    window.open(authUrl ?? '', '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -50,7 +51,7 @@ export function AuthPageFrame({ htmlContent, url, onRetry }: AuthPageFrameProps)
           <h3 className="text-amber-800 font-medium mb-2">Authentication Required</h3>
           <p className="text-amber-700 mb-4">
             This API is protected by Cloudflare Access and requires authentication.
-            You need to authenticate in a separate window before accessing the API.
+            You need to complete the authentication process in a separate window.
           </p>
 
           <Button
@@ -66,8 +67,10 @@ export function AuthPageFrame({ htmlContent, url, onRetry }: AuthPageFrameProps)
           <h3 className="font-medium mb-2">Instructions:</h3>
           <ol className="list-decimal pl-5 space-y-2 text-sm text-gray-600">
             <li>Click the button above to open the authentication page in a new tab</li>
-            <li>Complete the authentication process in the new tab</li>
-            <li>Return to this tab and click the &quot;Retry&quot; button to fetch the API specification</li>
+            <li>Enter your email and click &quot;Send me a code&quot;</li>
+            <li>Check your email for the verification code and enter it on the authentication page</li>
+            <li>After successful authentication, return to this tab</li>
+            <li>Click the &quot;Retry&quot; button to fetch the API specification</li>
           </ol>
         </div>
       </CardContent>
