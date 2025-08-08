@@ -54,7 +54,7 @@ export function AuthPageFrame({ htmlContent, url, onRetry }: AuthPageFrameProps)
 
         <div className="mt-4 text-sm text-gray-500">
           <p>
-            After authentication, click the "Retry" button to fetch the API specification.
+            After authentication, click the &quot;Retry&quot; button to fetch the API specification.
           </p>
         </div>
       </CardContent>
