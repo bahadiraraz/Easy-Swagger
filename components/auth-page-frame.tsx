@@ -12,12 +12,21 @@ interface AuthPageFrameProps {
 }
 
 export function AuthPageFrame({ htmlContent, url, onRetry }: AuthPageFrameProps) {
+  // Function to decode HTML entities
+  const decodeHtmlEntities = (html: string): string => {
+    // Create a textarea element to use the browser's built-in HTML entity decoding
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = html;
+    return textarea.value;
+  };
+
   // Extract the form action URL from the HTML content
   const extractFormActionUrl = (): string | null => {
     // Try to find the form action URL in the HTML
     const formActionMatch = htmlContent.match(/form\s+class="AuthFormLogin"\s+action='([^']+)'/);
     if (formActionMatch && formActionMatch[1]) {
-      return formActionMatch[1];
+      // Decode HTML entities in the URL
+      return decodeHtmlEntities(formActionMatch[1]);
     }
 
     // If no specific URL found, return the original URL
@@ -29,7 +38,8 @@ export function AuthPageFrame({ htmlContent, url, onRetry }: AuthPageFrameProps)
   const handleOpenAuth = () => {
     // Open the authentication URL in a new tab
     // Use empty string as fallback if authUrl is null
-    window.open(authUrl ?? '', '_blank', 'noopener,noreferrer');
+    const finalUrl = authUrl ? decodeHtmlEntities(authUrl) : '';
+    window.open(finalUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
